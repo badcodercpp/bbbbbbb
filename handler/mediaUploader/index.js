@@ -2,42 +2,37 @@ import _get from 'lodash/get';
 import _head from 'lodash/head';
 import _isEqual from 'lodash/isEqual';
 import _isEmpty from 'lodash/isEmpty';
-import { doLogin as login } from '../../db/connection/mongo/auth/login';
+import uploader from '../../db/connection/mongo/auth/uploader';
+const uuidv1 = require('uuid/v1');
 
 const doUploadMedia = (req, res) => {
     const parsedBody = req.body || {};
-    const phone = _get(parsedBody, 'phone');
-    const auth = _get(parsedBody, 'password');
+    const mediaType = _get(parsedBody, 'mediaType');
+    const media = _get(parsedBody, [mediaType]);
+    const mime = _get(parsedBody, 'mime');
+    const mediId = uuidv1();
     const options = {
-        phone, 
-        email: phone,
-        password: auth,
+        media,
+        type: mediaType,
+        mime: `${mediaType}/${mime}`,
+        mediId
     }
-    login(options, req, res).then((data) => {
-        if (!_isEmpty(data)) {
-            const respAuth = {
-                success: true,
-                message: 'Authentication successful!',
-                token: data,
-            };
-            res.status(200);
-            res.send(respAuth);
-        } else {
-            res.status(401);
-            res.statusMessage = JSON.stringify({error: `Authentication failed`});
-            res.send(`Authentication failed`);
-        }
-    }).catch((err) => {
-        const userId = _get(err, 'id');
-        if (!_isEmpty(userId)) {
-            res.status(500);
-            res.statusMessage = JSON.stringify({error: `user already exist - ${userId}`})
-            res.send({error: `user already exist - ${userId}`});
-        } else {
-            res.status(500);
-            res.statusMessage = JSON.stringify({error: `something went wrong trace - ${err}`});
-            res.send({error: `something went wrong trace - ${err}`});
-        }
+    uploader(options).then((data) => {
+        const respAuth = {
+            success: true,
+            message: 'Upload successful!',
+            data,
+        };
+        res.status(200);
+        res.send(respAuth);
+    }).catch((error) => {
+        const respAuth = {
+            success: false,
+            message: 'Upload successful!',
+            error,
+        };
+        res.status(500);
+        res.send(respAuth);
     });
 }
 
